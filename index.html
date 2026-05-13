@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>대시보드</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:      #0b0f1e;
+      --surface: #141827;
+      --border:  #1f2540;
+      --accent:  #4f8ef7;
+      --accent2: #7c3aed;
+      --text:    #e2e6f3;
+      --muted:   #6b7194;
+    }
+
+    body {
+      font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      padding: 56px 24px 40px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    header::before {
+      content: '';
+      position: absolute;
+      top: -120px; left: 50%;
+      transform: translateX(-50%);
+      width: 600px; height: 300px;
+      background: radial-gradient(ellipse, rgba(79,142,247,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(79,142,247,0.1);
+      border: 1px solid rgba(79,142,247,0.25);
+      border-radius: 9999px;
+      padding: 4px 14px;
+      font-size: 0.75rem;
+      color: var(--accent);
+      letter-spacing: 0.06em;
+      margin-bottom: 18px;
+    }
+    header h1 {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+    }
+    header h1 span {
+      background: linear-gradient(135deg, var(--accent), #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    header p {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    /* ── Grid ── */
+    main {
+      flex: 1;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+      width: 100%;
+    }
+
+    .section-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 18px;
+      margin-bottom: 48px;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 28px 24px;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, var(--card-color1, transparent), var(--card-color2, transparent));
+      opacity: 0;
+      transition: opacity 0.25s;
+    }
+    .card:hover {
+      border-color: rgba(255,255,255,0.15);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+    }
+    .card:hover::before { opacity: 1; }
+
+    .card-icon {
+      font-size: 2.2rem;
+      line-height: 1;
+      position: relative;
+      z-index: 1;
+    }
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      position: relative;
+      z-index: 1;
+    }
+    .card-desc {
+      font-size: 0.83rem;
+      color: var(--muted);
+      line-height: 1.6;
+      position: relative;
+      z-index: 1;
+      flex: 1;
+    }
+    .card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      position: relative;
+      z-index: 1;
+    }
+    .tag {
+      font-size: 0.7rem;
+      padding: 3px 9px;
+      border-radius: 9999px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--muted);
+    }
+    .card-arrow {
+      position: absolute;
+      top: 24px; right: 24px;
+      font-size: 1rem;
+      color: var(--muted);
+      transition: transform 0.2s, color 0.2s;
+      z-index: 1;
+    }
+    .card:hover .card-arrow {
+      transform: translate(3px, -3px);
+      color: var(--text);
+    }
+
+    /* Card color themes */
+    .card-blue   { --card-color1: rgba(79,142,247,0.05); --card-color2: transparent; }
+    .card-purple { --card-color1: rgba(124,58,237,0.05); --card-color2: transparent; }
+    .card-orange { --card-color1: rgba(251,146,60,0.05); --card-color2: transparent; }
+
+    /* ── Clock widget ── */
+    .widget-row {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 48px;
+      flex-wrap: wrap;
+    }
+    .widget {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 20px;
+      flex: 1;
+      min-width: 180px;
+    }
+    .widget-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+    .widget-value { font-size: 1.2rem; font-weight: 600; }
+    #clock       { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+
+    @media (max-width: 480px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-badge">🏛 KAERI · 개인 대시보드</div>
+  <h1><span>Tools</span> Dashboard</h1>
+  <p>자주 쓰는 도구 모음</p>
+</header>
+
+<main>
+
+  <!-- Widgets -->
+  <div class="widget-row">
+    <div class="widget">
+      <div class="widget-label">현재 시각</div>
+      <div class="widget-value" id="clock">--:--:--</div>
+    </div>
+    <div class="widget">
+      <div class="widget-label">오늘 날짜</div>
+      <div class="widget-value" id="wdate">--</div>
+    </div>
+    <div class="widget">
+      <div class="widget-label">서울 날씨</div>
+      <div class="widget-value" id="wweather">로딩 중…</div>
+    </div>
+  </div>
+
+  <!-- Tools -->
+  <div class="section-label">🛠 도구</div>
+  <div class="grid">
+
+    <a class="card card-blue" href="korea_weather.html">
+      <div class="card-arrow">↗</div>
+      <div class="card-icon">🌏</div>
+      <div class="card-title">한국 날씨 대시보드</div>
+      <div class="card-desc">
+        실시간 위성지도 위에 날씨 정보를 표시합니다.
+        8개 도시 선택, 레이더 오버레이, 7일 예보 제공.
+      </div>
+      <div class="card-tags">
+        <span class="tag">Open-Meteo API</span>
+        <span class="tag">Leaflet.js</span>
+        <span class="tag">RainViewer</span>
+      </div>
+    </a>
+
+    <a class="card card-purple" href="hf_papers.html">
+      <div class="card-arrow">↗</div>
+      <div class="card-icon">🤗</div>
+      <div class="card-title">HuggingFace Daily Papers</div>
+      <div class="card-desc">
+        오늘의 AI 논문을 카드 한 장씩 훑어봅니다.
+        초록·하이라이트·arXiv 링크 포함.
+      </div>
+      <div class="card-tags">
+        <span class="tag">AI / ML</span>
+        <span class="tag">매일 업데이트</span>
+      </div>
+    </a>
+
+    <a class="card card-orange" href="kaeri_onboarding.html">
+      <div class="card-arrow">↗</div>
+      <div class="card-icon">🏛️</div>
+      <div class="card-title">신입직원 교육 안내</div>
+      <div class="card-desc">
+        KAERI 71기 신입직원 교육 일정·준비사항·연락처 안내 페이지.
+      </div>
+      <div class="card-tags">
+        <span class="tag">KAERI</span>
+        <span class="tag">내부 문서</span>
+      </div>
+    </a>
+
+  </div>
+
+  <!-- Links -->
+  <div class="section-label">🔗 외부 링크</div>
+  <div class="grid">
+    <a class="card" href="https://huggingface.co/papers" target="_blank" style="--card-color1:rgba(255,107,53,0.05)">
+      <div class="card-arrow">↗</div>
+      <div class="card-icon">📄</div>
+      <div class="card-title">HuggingFace Papers</div>
+      <div class="card-desc">매일 업데이트되는 AI 논문 목록 원본</div>
+    </a>
+    <a class="card" href="https://www.weather.go.kr/w/weather/satellite/gk2a.do" target="_blank" style="--card-color1:rgba(79,142,247,0.05)">
+      <div class="card-arrow">↗</div>
+      <div class="card-icon">🛰️</div>
+      <div class="card-title">기상청 GK2A 위성</div>
+      <div class="card-desc">천리안 2A호 실시간 위성 영상</div>
+    </a>
+    <a class="card" href="https://www.kaeri.re.kr" target="_blank" style="--card-color1:rgba(0,48,135,0.08)">
+      <div class="card-arrow">↗</div>
+      <div class="card-icon">⚛️</div>
+      <div class="card-title">한국원자력연구원</div>
+      <div class="card-desc">KAERI 공식 홈페이지</div>
+    </a>
+  </div>
+
+</main>
+
+<footer>
+  Built with Claude Code &nbsp;·&nbsp;
+  <a href="https://github.com/yoonhj/kaeri-dashboard" target="_blank">GitHub</a> &nbsp;·&nbsp;
+  <a href="https://yoonhj.github.io/kaeri-dashboard/" target="_blank">GitHub Pages</a>
+</footer>
+
+<script>
+function tick() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit', second:'2-digit', timeZone:'Asia/Seoul'});
+  document.getElementById('wdate').textContent =
+    now.toLocaleDateString('ko-KR', {year:'numeric', month:'long', day:'numeric', weekday:'short', timeZone:'Asia/Seoul'});
+}
+setInterval(tick, 1000);
+tick();
+
+// Quick weather fetch for Seoul
+(async () => {
+  try {
+    const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.9780&current=temperature_2m,weather_code&timezone=Asia/Seoul');
+    const d = await r.json();
+    const codes = {0:'☀️ 맑음',1:'🌤️ 대체로 맑음',2:'⛅ 구름',3:'☁️ 흐림',45:'🌫️ 안개',51:'🌦️ 이슬비',61:'🌧️ 비',71:'🌨️ 눈',80:'🌧️ 소나기',95:'⛈️ 번개'};
+    const code = d.current.weather_code;
+    const label = Object.entries(codes).reverse().find(([k]) => code >= +k)?.[1] ?? '🌡️';
+    document.getElementById('wweather').textContent = `${label} ${Math.round(d.current.temperature_2m)}°C`;
+  } catch {
+    document.getElementById('wweather').textContent = '정보 없음';
+  }
+})();
+</script>
+</body>
+</html>
