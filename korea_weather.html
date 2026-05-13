@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>한국 날씨 대시보드</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+      overflow: hidden;
+      background: #060c1a;
+    }
+
+    #map {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+    }
+
+    /* Vignette overlay */
+    #vignette {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      background:
+        radial-gradient(ellipse at 0% 0%,   rgba(0,5,20,0.65) 0%, transparent 55%),
+        radial-gradient(ellipse at 100% 0%,  rgba(0,5,20,0.55) 0%, transparent 55%),
+        radial-gradient(ellipse at 0% 100%,  rgba(0,5,20,0.85) 0%, transparent 60%),
+        radial-gradient(ellipse at 100% 100%,rgba(0,5,20,0.7)  0%, transparent 55%);
+      pointer-events: none;
+    }
+
+    /* Glass card base */
+    .glass {
+      background: rgba(5, 12, 35, 0.72);
+      backdrop-filter: blur(22px) saturate(1.4);
+      -webkit-backdrop-filter: blur(22px) saturate(1.4);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    /* ───── Loading ───── */
+    #loading {
+      position: fixed;
+      inset: 0;
+      z-index: 9000;
+      background: rgba(6,12,26,0.92);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      color: rgba(255,255,255,0.8);
+      font-size: 1rem;
+      transition: opacity 0.5s;
+    }
+    .spinner {
+      width: 42px; height: 42px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: #5ba3f5;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ───── Main weather panel (top-left) ───── */
+    #weatherPanel {
+      position: fixed;
+      top: 24px;
+      left: 24px;
+      z-index: 100;
+      width: 310px;
+      border-radius: 22px;
+      padding: 26px 24px 22px;
+      color: #fff;
+      transition: opacity 0.4s;
+    }
+
+    .panel-loc {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 2px;
+    }
+    .loc-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #5ba3f5;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(91,163,245,0.5); }
+      50%      { box-shadow: 0 0 0 6px rgba(91,163,245,0); }
+    }
+    #cityName {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    #datetime {
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.45);
+      margin-bottom: 18px;
+      padding-left: 14px;
+    }
+
+    .main-weather {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    #weatherEmoji {
+      font-size: 3.8rem;
+      line-height: 1;
+      animation: float 3.5s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(-6px); }
+    }
+    .temp-block .big-temp {
+      font-size: 3.6rem;
+      font-weight: 300;
+      line-height: 1;
+      letter-spacing: -0.03em;
+    }
+    .temp-block .cond-label {
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.65);
+      margin-top: 3px;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      margin: 16px 0;
+    }
+
+    .details-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px 10px;
+    }
+    .detail-item { text-align: center; }
+    .d-icon  { font-size: 1.1rem; }
+    .d-label { font-size: 0.65rem; color: rgba(255,255,255,0.4); margin: 2px 0; letter-spacing: 0.04em; }
+    .d-val   { font-size: 0.9rem; font-weight: 600; }
+
+    .sunrise-row {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.55);
+    }
+    .sunrise-row span strong { color: #ffb347; }
+    .sunset-val strong { color: #5ba3f5 !important; }
+
+    /* ───── City selector (top-right) ───── */
+    #citySelector {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      z-index: 100;
+      border-radius: 18px;
+      padding: 14px 12px;
+      width: 138px;
+      color: #fff;
+    }
+    .sel-title {
+      font-size: 0.65rem;
+      color: rgba(255,255,255,0.35);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0 6px;
+      margin-bottom: 8px;
+    }
+    .city-btn {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 7px 10px;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.6);
+      font-size: 0.85rem;
+      cursor: pointer;
+      border-radius: 9px;
+      transition: background 0.18s, color 0.18s;
+      font-family: inherit;
+    }
+    .city-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
+    .city-btn.active {
+      background: rgba(91,163,245,0.18);
+      color: #7ec8ff;
+      font-weight: 600;
+    }
+
+    /* ───── 7-day forecast (bottom) ───── */
+    #forecast {
+      position: fixed;
+      bottom: 24px;
+      left: 24px;
+      right: 24px;
+      z-index: 100;
+      border-radius: 18px;
+      padding: 16px 20px;
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+    }
+    #forecast::-webkit-scrollbar { display: none; }
+    .fc-day {
+      flex: 1;
+      min-width: 72px;
+      text-align: center;
+      padding: 10px 6px;
+      border-radius: 12px;
+      color: #fff;
+      border: 1px solid transparent;
+      cursor: default;
+      transition: background 0.2s;
+    }
+    .fc-day.today {
+      background: rgba(91,163,245,0.15);
+      border-color: rgba(91,163,245,0.25);
+    }
+    .fc-day:not(.today):hover { background: rgba(255,255,255,0.06); }
+    .fc-dow   { font-size: 0.7rem; color: rgba(255,255,255,0.42); margin-bottom: 5px; }
+    .fc-icon  { font-size: 1.45rem; margin-bottom: 5px; }
+    .fc-temps { font-size: 0.75rem; display: flex; justify-content: center; gap: 5px; }
+    .fc-max   { color: #ffb96e; font-weight: 600; }
+    .fc-min   { color: rgba(255,255,255,0.4); }
+    .fc-rain  { font-size: 0.65rem; color: #7ec8ff; margin-top: 4px; }
+
+    /* ───── Map controls (right-center) ───── */
+    #mapControls {
+      position: fixed;
+      right: 24px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .mc-btn {
+      width: 42px; height: 42px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(5,12,35,0.75);
+      backdrop-filter: blur(12px);
+      color: rgba(255,255,255,0.65);
+      font-size: 1.05rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.18s, border-color 0.18s, color 0.18s;
+    }
+    .mc-btn:hover { background: rgba(91,163,245,0.18); border-color: rgba(91,163,245,0.35); color: #fff; }
+    .mc-btn.on    { background: rgba(91,163,245,0.25); border-color: rgba(91,163,245,0.5);  color: #7ec8ff; }
+
+    /* ───── Bottom-left badges ───── */
+    #badges {
+      position: fixed;
+      bottom: 110px;
+      left: 24px;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 0.7rem;
+      background: rgba(5,12,35,0.7);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.07);
+      color: rgba(255,255,255,0.45);
+    }
+    .badge a { color: #5ba3f5; text-decoration: none; }
+    .badge a:hover { text-decoration: underline; }
+
+    /* Leaflet branding */
+    .leaflet-control-attribution { display: none !important; }
+  </style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading">
+  <div class="spinner"></div>
+  <span>날씨 데이터를 불러오는 중...</span>
+</div>
+
+<!-- Map -->
+<div id="map"></div>
+<div id="vignette"></div>
+
+<!-- Main weather panel -->
+<div id="weatherPanel" class="glass">
+  <div class="panel-loc"><div class="loc-dot"></div><div id="cityName">서울특별시</div></div>
+  <div id="datetime"></div>
+  <div class="main-weather">
+    <div id="weatherEmoji">🌤️</div>
+    <div class="temp-block">
+      <div class="big-temp"><span id="temp">--</span>°C</div>
+      <div class="cond-label" id="condLabel">날씨 정보 로딩 중</div>
+    </div>
+  </div>
+  <div class="details-grid">
+    <div class="detail-item">
+      <div class="d-icon">🌡️</div>
+      <div class="d-label">체감온도</div>
+      <div class="d-val" id="feels">--</div>
+    </div>
+    <div class="detail-item">
+      <div class="d-icon">💧</div>
+      <div class="d-label">습도</div>
+      <div class="d-val" id="humid">--</div>
+    </div>
+    <div class="detail-item">
+      <div class="d-icon">💨</div>
+      <div class="d-label">바람</div>
+      <div class="d-val" id="wind">--</div>
+    </div>
+    <div class="detail-item">
+      <div class="d-icon">🌧️</div>
+      <div class="d-label">강수량</div>
+      <div class="d-val" id="precip">--</div>
+    </div>
+    <div class="detail-item">
+      <div class="d-icon">🔺</div>
+      <div class="d-label">최고</div>
+      <div class="d-val" id="tmax" style="color:#ffb96e">--</div>
+    </div>
+    <div class="detail-item">
+      <div class="d-icon">🔻</div>
+      <div class="d-label">최저</div>
+      <div class="d-val" id="tmin" style="color:#7ec8ff">--</div>
+    </div>
+  </div>
+  <div class="sunrise-row">
+    <span>🌅 일출 <strong id="sunrise">--:--</strong></span>
+    <span class="sunset-val">🌇 일몰 <strong id="sunset">--:--</strong></span>
+  </div>
+</div>
+
+<!-- City selector -->
+<div id="citySelector" class="glass">
+  <div class="sel-title">📍 도시 선택</div>
+  <div id="cityList"></div>
+</div>
+
+<!-- 7-day forecast -->
+<div id="forecast" class="glass"></div>
+
+<!-- Bottom badges -->
+<div id="badges">
+  <div class="badge">🛰️ 지도: ESRI World Imagery</div>
+  <div class="badge">📡 날씨: <a href="https://open-meteo.com" target="_blank">Open-Meteo API</a></div>
+  <div class="badge">🌧️ 레이더: <a href="https://rainviewer.com" target="_blank">RainViewer</a></div>
+  <div class="badge">☁️ KMA 위성: <a href="https://www.weather.go.kr/w/weather/satellite/gk2a.do" target="_blank">기상청 GK2A</a></div>
+</div>
+
+<!-- Map controls -->
+<div id="mapControls">
+  <button class="mc-btn" id="radarBtn" onclick="toggleRadar()" title="레이더 오버레이">🌧</button>
+  <a class="mc-btn" href="https://www.weather.go.kr/w/weather/satellite/gk2a.do" target="_blank" title="기상청 위성영상">🛰</a>
+  <button class="mc-btn" onclick="map.zoomIn()" title="확대">＋</button>
+  <button class="mc-btn" onclick="map.zoomOut()" title="축소">－</button>
+  <button class="mc-btn" onclick="resetView()" title="한반도 전체 보기">🗺</button>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ── City data ── */
+const CITIES = [
+  { name:'서울', full:'서울특별시',      lat:37.5665, lon:126.9780, zoom:10 },
+  { name:'부산', full:'부산광역시',      lat:35.1796, lon:129.0756, zoom:10 },
+  { name:'인천', full:'인천광역시',      lat:37.4563, lon:126.7052, zoom:10 },
+  { name:'대구', full:'대구광역시',      lat:35.8714, lon:128.6014, zoom:10 },
+  { name:'광주', full:'광주광역시',      lat:35.1595, lon:126.8526, zoom:10 },
+  { name:'대전', full:'대전광역시',      lat:36.3504, lon:127.3845, zoom:10 },
+  { name:'울산', full:'울산광역시',      lat:35.5384, lon:129.3114, zoom:10 },
+  { name:'제주', full:'제주특별자치도',  lat:33.4996, lon:126.5312, zoom:10 },
+];
+
+/* ── WMO weather codes ── */
+const WMO = {
+  0:{l:'맑음',           e:'☀️'},
+  1:{l:'대체로 맑음',    e:'🌤️'},
+  2:{l:'구름 조금',      e:'⛅'},
+  3:{l:'흐림',           e:'☁️'},
+  45:{l:'안개',          e:'🌫️'},
+  48:{l:'상고대 안개',   e:'🌫️'},
+  51:{l:'가벼운 이슬비', e:'🌦️'},
+  53:{l:'이슬비',        e:'🌦️'},
+  55:{l:'강한 이슬비',   e:'🌦️'},
+  61:{l:'비',            e:'🌧️'},
+  63:{l:'비',            e:'🌧️'},
+  65:{l:'강한 비',       e:'🌧️'},
+  71:{l:'눈',            e:'🌨️'},
+  73:{l:'눈',            e:'🌨️'},
+  75:{l:'강한 눈',       e:'❄️'},
+  77:{l:'눈발',          e:'❄️'},
+  80:{l:'소나기',        e:'🌧️'},
+  81:{l:'소나기',        e:'🌧️'},
+  82:{l:'강한 소나기',   e:'⛈️'},
+  85:{l:'눈 소나기',     e:'🌨️'},
+  86:{l:'강한 눈 소나기',e:'❄️'},
+  95:{l:'천둥번개',      e:'⛈️'},
+  96:{l:'우박',          e:'⛈️'},
+  99:{l:'강한 우박',     e:'⛈️'},
+};
+const wmo = (code) => WMO[code] ?? {l:'알 수 없음', e:'🌡️'};
+
+const DAY = ['일','월','화','수','목','금','토'];
+
+/* ── Leaflet map ── */
+const map = L.map('map', {
+  center:[36.5, 127.8],
+  zoom:7,
+  zoomControl:false,
+  attributionControl:false,
+});
+
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{
+  maxZoom:18,
+}).addTo(map);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',{
+  subdomains:'abcd', maxZoom:19, opacity:0.75,
+}).addTo(map);
+
+function resetView() { map.flyTo([36.5,127.8], 7, {duration:1.4}); }
+
+/* ── Radar overlay ── */
+let radarLayer = null;
+let radarOn = false;
+
+async function toggleRadar() {
+  const btn = document.getElementById('radarBtn');
+  if (radarOn) {
+    if (radarLayer) map.removeLayer(radarLayer);
+    radarLayer = null; radarOn = false;
+    btn.classList.remove('on');
+    return;
+  }
+  try {
+    const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+    const data = await res.json();
+    const past = data.radar.past;
+    if (!past || !past.length) throw new Error('no data');
+    const latest = past[past.length - 1];
+    radarLayer = L.tileLayer(
+      `https://tilecache.rainviewer.com${latest.path}/256/{z}/{x}/{y}/2/1_1.png`,
+      {opacity:0.55, zIndex:5}
+    );
+    radarLayer.addTo(map);
+    radarOn = true;
+    btn.classList.add('on');
+  } catch {
+    alert('레이더 데이터를 불러올 수 없습니다.');
+  }
+}
+
+/* ── Clock ── */
+function tickClock() {
+  const now = new Date();
+  const timeStr = now.toLocaleString('ko-KR', {
+    year:'numeric', month:'long', day:'numeric',
+    weekday:'long', hour:'2-digit', minute:'2-digit', second:'2-digit',
+    timeZone:'Asia/Seoul',
+  });
+  document.getElementById('datetime').textContent = timeStr;
+}
+setInterval(tickClock, 1000);
+tickClock();
+
+/* ── City buttons ── */
+let activeCityIdx = 0;
+const cityListEl = document.getElementById('cityList');
+CITIES.forEach((c, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'city-btn' + (i === 0 ? ' active' : '');
+  btn.textContent = c.name;
+  btn.id = `cb${i}`;
+  btn.onclick = () => selectCity(i);
+  cityListEl.appendChild(btn);
+});
+
+/* ── Format helpers ── */
+function fmtTime(iso) {
+  if (!iso) return '--:--';
+  const d = new Date(iso);
+  return d.toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit', timeZone:'Asia/Seoul'});
+}
+
+function dayLabel(iso, i) {
+  if (i === 0) return '오늘';
+  if (i === 1) return '내일';
+  return DAY[new Date(iso).getDay()] + '요일';
+}
+
+/* ── Weather fetch & render ── */
+async function fetchWeather(city) {
+  const params = new URLSearchParams({
+    latitude: city.lat,
+    longitude: city.lon,
+    current: 'temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m',
+    daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,sunrise,sunset',
+    timezone: 'Asia/Seoul',
+    forecast_days: 7,
+  });
+  const r = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`);
+  if (!r.ok) throw new Error('API error');
+  return r.json();
+}
+
+function renderWeather(data, city) {
+  const c = data.current;
+  const d = data.daily;
+  const w = wmo(c.weather_code);
+
+  document.getElementById('cityName').textContent  = city.full;
+  document.getElementById('weatherEmoji').textContent = w.e;
+  document.getElementById('temp').textContent      = Math.round(c.temperature_2m);
+  document.getElementById('condLabel').textContent = w.l;
+  document.getElementById('feels').textContent     = Math.round(c.apparent_temperature) + '°C';
+  document.getElementById('humid').textContent     = c.relative_humidity_2m + '%';
+  document.getElementById('wind').textContent      = c.wind_speed_10m.toFixed(1) + ' km/h';
+  document.getElementById('precip').textContent    = c.precipitation.toFixed(1) + ' mm';
+  document.getElementById('tmax').textContent      = Math.round(d.temperature_2m_max[0]) + '°C';
+  document.getElementById('tmin').textContent      = Math.round(d.temperature_2m_min[0]) + '°C';
+  document.getElementById('sunrise').textContent   = fmtTime(d.sunrise[0]);
+  document.getElementById('sunset').textContent    = fmtTime(d.sunset[0]);
+
+  /* 7-day forecast */
+  const strip = document.getElementById('forecast');
+  strip.innerHTML = '';
+  for (let i = 0; i < 7; i++) {
+    const fw = wmo(d.weather_code[i]);
+    const rain = d.precipitation_sum[i];
+    const el = document.createElement('div');
+    el.className = 'fc-day' + (i === 0 ? ' today' : '');
+    el.innerHTML = `
+      <div class="fc-dow">${dayLabel(d.time[i], i)}</div>
+      <div class="fc-icon">${fw.e}</div>
+      <div class="fc-temps">
+        <span class="fc-max">${Math.round(d.temperature_2m_max[i])}°</span>
+        <span class="fc-min">${Math.round(d.temperature_2m_min[i])}°</span>
+      </div>
+      ${rain > 0.1 ? `<div class="fc-rain">💧${rain.toFixed(1)}mm</div>` : '<div class="fc-rain" style="opacity:0">·</div>'}
+    `;
+    strip.appendChild(el);
+  }
+}
+
+async function selectCity(idx) {
+  activeCityIdx = idx;
+  document.querySelectorAll('.city-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+  const city = CITIES[idx];
+  map.flyTo([city.lat, city.lon], city.zoom, {duration:1.3});
+
+  const panel = document.getElementById('weatherPanel');
+  panel.style.opacity = '0.4';
+  try {
+    const data = await fetchWeather(city);
+    renderWeather(data, city);
+  } catch(e) {
+    document.getElementById('condLabel').textContent = '데이터 로딩 실패';
+  } finally {
+    panel.style.opacity = '1';
+  }
+}
+
+/* ── Init ── */
+(async () => {
+  try {
+    const data = await fetchWeather(CITIES[0]);
+    renderWeather(data, CITIES[0]);
+  } catch(e) {
+    document.getElementById('condLabel').textContent = '날씨 정보를 불러올 수 없습니다';
+  } finally {
+    const lo = document.getElementById('loading');
+    lo.style.opacity = '0';
+    setTimeout(() => lo.remove(), 500);
+  }
+})();
+
+/* ── Auto-refresh every 10 min ── */
+setInterval(async () => {
+  try {
+    const data = await fetchWeather(CITIES[activeCityIdx]);
+    renderWeather(data, CITIES[activeCityIdx]);
+  } catch {}
+}, 10 * 60 * 1000);
+</script>
+</body>
+</html>
