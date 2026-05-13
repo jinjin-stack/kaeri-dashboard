@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HuggingFace Daily Papers</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --card: #1a1d2e;
+      --border: #2a2d3e;
+      --accent: #ff6b35;
+      --accent2: #ffb347;
+      --text: #e8eaf0;
+      --muted: #8b8fa8;
+      --link: #7eb8f7;
+      --tag-bg: #252840;
+      --progress: #ff6b35;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 32px 16px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    header .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    header .logo-icon {
+      font-size: 2rem;
+    }
+
+    header h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    header .date {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-top: 4px;
+    }
+
+    .progress-bar-wrap {
+      width: 100%;
+      max-width: 720px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .progress-bar-bg {
+      flex: 1;
+      height: 4px;
+      background: var(--border);
+      border-radius: 9999px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 9999px;
+      transition: width 0.4s cubic-bezier(.4,0,.2,1);
+    }
+
+    .progress-label {
+      color: var(--muted);
+      font-size: 0.82rem;
+      white-space: nowrap;
+    }
+
+    .card-container {
+      width: 100%;
+      max-width: 720px;
+      position: relative;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      animation: slideIn 0.35s cubic-bezier(.4,0,.2,1);
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-rank {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      margin-bottom: 14px;
+    }
+
+    .card-rank.top { background: linear-gradient(135deg, #ffd700, #ff8c00); }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      line-height: 1.45;
+      margin-bottom: 14px;
+      color: #fff;
+    }
+
+    .card-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .meta-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      padding: 3px 10px;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .meta-chip.upvote {
+      color: var(--accent2);
+      border-color: rgba(255,179,71,0.25);
+      background: rgba(255,179,71,0.07);
+    }
+
+    .abstract-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    .abstract {
+      font-size: 0.92rem;
+      line-height: 1.75;
+      color: #c5c8d8;
+    }
+
+    .abstract.collapsed {
+      display: -webkit-box;
+      -webkit-line-clamp: 5;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .expand-btn {
+      background: none;
+      border: none;
+      color: var(--link);
+      font-size: 0.82rem;
+      cursor: pointer;
+      margin-top: 6px;
+      padding: 0;
+    }
+
+    .highlights {
+      margin-top: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .highlight-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: #b0b4cc;
+    }
+
+    .highlight-item::before {
+      content: '▸';
+      color: var(--accent);
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .links-row {
+      margin-top: 22px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .link-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: opacity 0.15s;
+    }
+
+    .link-btn:hover { opacity: 0.8; }
+
+    .link-btn.hf {
+      background: rgba(255,107,53,0.15);
+      color: var(--accent);
+      border: 1px solid rgba(255,107,53,0.3);
+    }
+
+    .link-btn.arxiv {
+      background: rgba(126,184,247,0.1);
+      color: var(--link);
+      border: 1px solid rgba(126,184,247,0.2);
+    }
+
+    .link-btn.github {
+      background: rgba(255,255,255,0.06);
+      color: #ccc;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .nav-row {
+      width: 100%;
+      max-width: 720px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 24px;
+      gap: 12px;
+    }
+
+    .nav-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 22px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .nav-btn:hover:not(:disabled) {
+      background: #22263d;
+      border-color: var(--accent);
+    }
+
+    .nav-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .nav-btn.next {
+      background: linear-gradient(135deg, var(--accent), #e05500);
+      border-color: transparent;
+      color: #fff;
+    }
+
+    .nav-btn.next:hover:not(:disabled) {
+      background: linear-gradient(135deg, #ff8a5c, #ff6b35);
+    }
+
+    .dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--border);
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+    }
+
+    .dot.active {
+      background: var(--accent);
+      transform: scale(1.3);
+    }
+
+    footer {
+      margin-top: 40px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-align: center;
+    }
+
+    footer a { color: var(--link); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-icon">🤗</span>
+    <h1>Daily Papers</h1>
+  </div>
+  <p class="date">2026년 5월 13일 · HuggingFace Papers 요약</p>
+</header>
+
+<div class="progress-bar-wrap">
+  <div class="progress-bar-bg">
+    <div class="progress-bar-fill" id="progressFill"></div>
+  </div>
+  <span class="progress-label" id="progressLabel"></span>
+</div>
+
+<div class="card-container">
+  <div class="card" id="card"></div>
+</div>
+
+<div class="nav-row">
+  <button class="nav-btn prev" id="prevBtn" onclick="navigate(-1)">← 이전</button>
+  <div class="dots" id="dots"></div>
+  <button class="nav-btn next" id="nextBtn" onclick="navigate(1)">다음 →</button>
+</div>
+
+<footer>
+  데이터 출처: <a href="https://huggingface.co/papers" target="_blank">huggingface.co/papers</a>
+</footer>
+
+<script>
+const papers = [
+  {
+    rank: 1,
+    title: "δ-mem: Efficient Online Memory for Large Language Models",
+    authors: ["Jingdi Lei", "Di Zhang", "Junxian Li", "Weida Wang", "Kaixuan Fan", "Xiang Liu", "Qihan Liu", "Xiaoteng Ma", "Baian Chen", "Soujanya Poria"],
+    org: "Mind Lab Research",
+    upvotes: 59,
+    abstract: "δ-mem은 frozen full-attention LLM 백본에 컴팩트한 온라인 연상 메모리 상태를 추가하는 경량 메모리 메커니즘입니다. 과거 정보를 고정 크기 상태 행렬로 압축하고 delta-rule 학습으로 업데이트하며, 생성 단계에서 어텐션 연산에 low-rank 보정을 적용합니다. 단 8×8 크기의 온라인 메모리 상태만 사용하면서도 강력한 성능을 달성합니다. 전체 파인튜닝, 백본 교체, 컨텍스트 윈도우 확장 없이도 뛰어난 메모리 활용 능력을 보여줍니다.",
+    highlights: [
+      "일반 벤치마크 평균 1.10× (frozen 백본 대비), 1.15× (최강 비교군 대비) 성능 향상",
+      "MemoryAgentBench에서 1.31×, LoCoMo에서 1.20× 향상",
+      "8×8 크기의 초경량 메모리 상태만 사용 — 파라미터 추가 최소화",
+      "전체 파인튜닝 불필요, 기존 모델 범용 성능 유지"
+    ],
+    hfUrl: "https://huggingface.co/papers/2605.12357",
+    arxivUrl: "https://arxiv.org/abs/2605.12357",
+    githubUrl: "https://github.com/declare-lab/delta-Mem"
+  },
+  {
+    rank: 2,
+    title: "SenseNova-U1: Unifying Multimodal Understanding and Generation with NEO-unify Architecture",
+    authors: ["SenseNova Team (58명)"],
+    org: "SenseNova / Light AI",
+    upvotes: 54,
+    abstract: "SenseNova-U1은 비전-언어 모델에서 이해와 생성을 통합하는 네이티브 멀티모달 패러다임입니다. 사전학습된 비전 인코더나 VAE 디코더 없이 픽셀에서 직접 동작하는 near-lossless 비주얼 인터페이스를 구축합니다. Mixture-of-Transformers(MoT) 아키텍처로 이해와 생성을 하나의 엔드-투-엔드 모델에서 처리하며, 픽셀 공간 flow matching을 자동회귀 언어 모델링과 결합합니다.",
+    highlights: [
+      "8B(Dense) / A3B(MoE 30B 이해 + 8B 생성) 두 가지 모델 변형 제공",
+      "MMMU-Pro 72.83, OCRBench 91.90 — 최상위권 이해 성능",
+      "GenEval 0.91, DPG-Bench 88.14 — 고품질 이미지 생성",
+      "사전학습 인코더 없이 32× 패치 압축으로 픽셀 직접 처리"
+    ],
+    hfUrl: "https://huggingface.co/papers/2605.12500",
+    arxivUrl: "https://arxiv.org/abs/2605.12500",
+    githubUrl: "https://github.com/OpenSenseNova/SenseNova-U1"
+  },
+  {
+    rank: 3,
+    title: "MemPrivacy: Privacy-Preserving Personalized Memory Management for Edge-Cloud Agents",
+    authors: ["Yining Chen", "Jihao Zhao", "Bo Tang", "Haofen Wang", "Feiyu Xiong", "Zhiyu Li"],
+    org: "MemTensor / Tongji University",
+    upvotes: 41,
+    abstract: "MemPrivacy는 LLM 기반 에이전트의 클라우드 보조 메모리 관리에서 민감한 사용자 정보를 보호하는 프레임워크입니다. 기존 공격적 마스킹 방식이 의미론적 정보를 파괴하는 문제를 해결하기 위해, 엣지 기기에서 프라이버시 민감 부분을 식별하고 유형별 플레이스홀더로 대체하여 클라우드 처리 후 로컬에서 원래 값을 복원합니다. 4단계 프라이버시 분류 체계(PL1~PL4)와 MemPrivacy-Bench 데이터셋(200명 사용자, 5.2만+ 프라이버시 인스턴스)을 함께 제공합니다.",
+    highlights: [
+      "MemPrivacy-4B-RL: MemPrivacy-Bench에서 F1 85.97%, PersonaMem-v2에서 94.48%",
+      "메모리 시스템 유틸리티 손실 <1.6% — 비가역적 마스킹(-26~-41%) 대비 압도적 우수",
+      "처리 지연 ~2초 (MemPrivacy-Bench), 추론 모델 대비 1~2 오더 빠름",
+      "0.6B~4B 경량 모델로 엣지 디바이스 배포 최적화"
+    ],
+    hfUrl: "https://huggingface.co/papers/2605.09530",
+    arxivUrl: "https://arxiv.org/abs/2605.09530",
+    githubUrl: "https://github.com/MemTensor/MemPrivacy"
+  },
+  {
+    rank: 4,
+    title: "RubricEM: Meta-RL with Rubric-guided Policy Decomposition beyond Verifiable Rewards",
+    authors: ["Gaotang Li", "Bhavana Dalvi Mishra", "Zifeng Wang", "Jun Yan", "Yanfei Chen", "Chun-Liang Li", "Long T. Le", "Rujun Han", "George Lee", "Hanghang Tong", "Chen-Yu Lee", "Tomas Pfister"],
+    org: "University of Illinois Urbana-Champaign / Google Cloud AI Research",
+    upvotes: 24,
+    abstract: "RubricEM은 복잡한 정보 검색 질문에 대한 장문 보고서를 생성하는 딥 리서치 에이전트 훈련을 위한 강화학습 프레임워크입니다. 루브릭(채점 기준표)을 훈련 파이프라인 전체의 공유 인터페이스로 활용하여 정책 실행 구조화, 판사 피드백 제공, 에이전트 메모리 구축에 모두 사용합니다. Plan → Research → Review → Answer의 4단계 구조적 스캐폴드와 단계별 GRPO(SS-GRPO)를 결합해 장기 추론 최적화를 달성합니다.",
+    highlights: [
+      "RubricEM-8B: DeepResearchBench 47.8, HealthBench 49.3, 평균 55.5 (오픈 모델 최고)",
+      "Tongyi DeepResearch-30B(50.8)를 8B 모델로 능가",
+      "OpenAI Deep Research(59.9), Gemini 3.1 Pro(53.9)에 근접",
+      "루브릭 기반 반성 메타-정책으로 에피소드 간 경험 재사용 가능"
+    ],
+    hfUrl: "https://huggingface.co/papers/2605.10899",
+    arxivUrl: "https://arxiv.org/abs/2605.10899",
+    githubUrl: null
+  },
+  {
+    rank: 5,
+    title: "Beyond the Last Layer: Multi-Layer Representation Fusion for Visual Tokenization",
+    authors: ["Xuanyu Zhu", "Yan Bai", "Yang Shi", "Yihang Lou", "Yuanxing Zhang", "Jing Jin", "Yuan Zhou"],
+    org: "Peking University / Meituan / Tsinghua University",
+    upvotes: 18,
+    abstract: "기존 표현 오토인코더들은 frozen 사전학습 비전 인코더의 마지막 레이어만 사용하여 시각적 토크나이저로 활용해 왔습니다. 이 논문은 저수준 시각 세부정보가 여러 레이어의 의미론적 추상화를 거치면서 마지막 레이어에서 감쇠된 잔차로만 남는다는 사실을 밝히고, 다층 특징을 명시적으로 융합함으로써 이 손실된 정보를 크게 복원할 수 있음을 보여줍니다. 에너지 제약 라우팅과 점진적 보정을 통해 모든 인코더 레이어를 적응적으로 집계하는 DRoRAE(Depth-Routed Representation AutoEncoder)를 제안합니다.",
+    highlights: [
+      "ImageNet-256에서 rFID 0.57 → 0.29 (재구성), 생성 FID 1.74 → 1.65 개선",
+      "텍스트-이미지 합성에도 성능 이득 전이 확인",
+      "융합 용량과 재구성 품질 간 로그-선형 스케일링 법칙 발견 (R²=0.86)",
+      "frozen 디코더와 호환되는 풍부한 잠재 표현 생성"
+    ],
+    hfUrl: "https://huggingface.co/papers/2605.10780",
+    arxivUrl: "https://arxiv.org/abs/2605.10780",
+    githubUrl: "https://github.com/zhuzil/DRoRAE"
+  },
+  {
+    rank: 6,
+    title: "CausalCine: Real-Time Autoregressive Generation for Multi-Shot Video Narratives",
+    authors: ["CausalCine Team (Ant Group)"],
+    org: "Ant Group",
+    upvotes: 14,
+    abstract: "CausalCine는 멀티샷 비디오 내러티브를 위한 실시간 자동회귀 생성 프레임워크입니다. 영화적 스토리텔링에서 카메라 전환과 장면 연속성을 유지하며 일관된 긴 형태의 비디오를 생성합니다. 인과적 구조를 활용해 이전 샷의 맥락을 다음 샷 생성에 자연스럽게 통합합니다.",
+    highlights: [
+      "멀티샷 비디오 생성에서 실시간 자동회귀 방식 적용",
+      "샷 간 시각적 일관성 및 내러티브 연속성 유지",
+      "Ant Group의 대규모 인프라 기반 실용적 배포 설계"
+    ],
+    hfUrl: "https://huggingface.co/papers/2605.12496",
+    arxivUrl: "https://arxiv.org/abs/2605.12496",
+    githubUrl: null
+  },
+  {
+    rank: 7,
+    title: "Do Enterprise Systems Need Learned World Models? The Importance of Context to Infer Dynamics",
+    authors: ["Patrice Bechard et al."],
+    org: "ServiceNow AI",
+    upvotes: 14,
+    abstract: "이 연구는 기업 시스템에서 학습된 월드 모델의 필요성을 탐구합니다. 복잡한 기업 환경에서 동적 상태를 정확히 추론하는 데 컨텍스트가 얼마나 중요한지 분석하며, 학습된 월드 모델이 실제로 필요한 시나리오와 그렇지 않은 경우를 구분합니다.",
+    highlights: [
+      "기업 시스템에서 월드 모델의 실용적 필요성 분석",
+      "컨텍스트 정보가 동적 추론에 미치는 영향 정량화",
+      "ServiceNow의 실제 기업 데이터 기반 실험"
+    ],
+    hfUrl: "https://huggingface.co/papers/2605.12178",
+    arxivUrl: "https://arxiv.org/abs/2605.12178",
+    githubUrl: null
+  },
+  {
+    rank: 8,
+    title: "ToolCUA: Towards Optimal GUI-Tool Path Orchestration for Computer Use Agents",
+    authors: ["ToolCUA Team"],
+    org: "TongyiLab (Alibaba)",
+    upvotes: 13,
+    abstract: "ToolCUA는 컴퓨터 사용 에이전트를 위한 GUI-Tool 경로 오케스트레이션 최적화 프레임워크입니다. 에이전트가 GUI 조작과 API/Tool 호출 중 언제 어떤 방식을 선택해야 최적인지를 결정하는 정책을 학습합니다. 실제 컴퓨터 사용 태스크에서 효율성과 성공률을 동시에 개선합니다.",
+    highlights: [
+      "GUI 액션과 도구 호출 간 최적 경로 선택 정책 학습",
+      "Alibaba TongyiLab의 컴퓨터 사용 에이전트 연구",
+      "실제 업무 자동화 시나리오 기반 평가"
+    ],
+    hfUrl: "https://huggingface.co/papers/2605.12481",
+    arxivUrl: "https://arxiv.org/abs/2605.12481",
+    githubUrl: null
+  },
+  {
+    rank: 9,
+    title: "Teaching Language Models to Think in Code",
+    authors: ["Hyeoni Team"],
+    org: "Korea University",
+    upvotes: 9,
+    abstract: "이 논문은 언어 모델이 자연어 대신 코드로 추론 과정을 표현하도록 학습시키는 방법을 제안합니다. 코드는 명확한 구조와 실행 가능성을 갖추고 있어 복잡한 논리적 추론을 더 정밀하게 표현할 수 있습니다. 코드 기반 사고를 통해 수학, 논리, 알고리즘 문제에서 성능을 향상시킵니다.",
+    highlights: [
+      "자연어 Chain-of-Thought 대신 코드로 추론 과정 표현",
+      "수학/논리 벤치마크에서 성능 향상 확인",
+      "한국과학기술원 연구팀의 국내 연구 성과"
+    ],
+    hfUrl: "https://huggingface.co/papers/2605.07237",
+    arxivUrl: "https://arxiv.org/abs/2605.07237",
+    githubUrl: null
+  },
+  {
+    rank: 10,
+    title: "MCP-Cosmos: World Model-Augmented Agents for Complex Task Execution in MCP Environments",
+    authors: ["Dhaval Patel et al."],
+    org: "IBM Research",
+    upvotes: 10,
+    abstract: "MCP-Cosmos는 Model Context Protocol(MCP) 환경에서 복잡한 태스크를 실행하기 위해 월드 모델로 강화된 에이전트 프레임워크입니다. 월드 모델을 통해 에이전트가 환경의 동적 변화를 예측하고 더 효과적으로 계획을 수립할 수 있도록 합니다. IBM Research의 실용적 기업 AI 에이전트 연구의 일환입니다.",
+    highlights: [
+      "MCP 환경에서의 월드 모델 기반 에이전트 설계",
+      "복잡한 다단계 태스크 실행 성능 향상",
+      "IBM Research의 기업용 AI 에이전트 프레임워크 연구"
+    ],
+    hfUrl: "https://huggingface.co/papers/2605.09131",
+    arxivUrl: "https://arxiv.org/abs/2605.09131",
+    githubUrl: null
+  },
+  {
+    rank: 11,
+    title: "World Model for Robot Learning: A Comprehensive Survey",
+    authors: ["Sicong et al. (18명)"],
+    org: "Multi-institution",
+    upvotes: 7,
+    abstract: "로봇 학습에서 월드 모델의 역할을 포괄적으로 조사한 서베이 논문입니다. 물리 세계의 동적 특성을 모델링하여 로봇이 더 효율적으로 학습하고 다양한 환경에 적응할 수 있도록 하는 월드 모델 기법들을 체계적으로 분류하고 비교합니다.",
+    highlights: [
+      "로봇 학습을 위한 월드 모델 기법 종합 정리",
+      "모델 기반 강화학습, 시뮬레이션, 예측 모델 등 포괄적 범위",
+      "18명의 저자가 참여한 대규모 서베이"
+    ],
+    hfUrl: "https://huggingface.co/papers/2605.00080",
+    arxivUrl: "https://arxiv.org/abs/2605.00080",
+    githubUrl: null
+  },
+  {
+    rank: 12,
+    title: "Agent-ValueBench: A Comprehensive Benchmark for Evaluating Agent Values",
+    authors: ["Henry Yeh et al."],
+    org: "Peking University",
+    upvotes: 6,
+    abstract: "Agent-ValueBench는 AI 에이전트의 가치 정렬을 평가하기 위한 포괄적 벤치마크입니다. 에이전트가 복잡한 의사결정 상황에서 인간의 가치와 윤리적 원칙에 얼마나 부합하는 행동을 하는지 다양한 시나리오에서 측정합니다.",
+    highlights: [
+      "에이전트 가치 정렬 평가를 위한 새로운 벤치마크 제시",
+      "다양한 윤리적 딜레마 및 가치 충돌 시나리오 포함",
+      "주요 LLM 에이전트들의 가치 정렬 수준 비교 분석"
+    ],
+    hfUrl: "https://huggingface.co/papers/2605.10365",
+    arxivUrl: "https://arxiv.org/abs/2605.10365",
+    githubUrl: null
+  },
+  {
+    rank: 13,
+    title: "MEME: Multi-entity & Evolving Memory Evaluation",
+    authors: ["Gigglingface et al."],
+    org: "KAIST AI",
+    upvotes: 5,
+    abstract: "MEME는 다중 엔티티와 시간에 따라 변화하는 메모리를 평가하는 벤치마크입니다. LLM이 여러 엔티티에 대한 정보를 동시에 추적하고, 그 정보가 시간이 지남에 따라 변화할 때 정확하게 업데이트된 정보를 사용할 수 있는지 평가합니다. KAIST AI의 메모리 평가 연구입니다.",
+    highlights: [
+      "다중 엔티티 메모리 추적 및 진화하는 정보 처리 평가",
+      "시간에 따른 정보 업데이트 일관성 측정",
+      "KAIST AI의 LLM 메모리 능력 연구"
+    ],
+    hfUrl: "https://huggingface.co/papers/2605.12477",
+    arxivUrl: "https://arxiv.org/abs/2605.12477",
+    githubUrl: null
+  }
+];
+
+let current = 0;
+let expanded = false;
+
+function renderCard() {
+  expanded = false;
+  const p = papers[current];
+  const isTop = p.rank === 1;
+
+  const rankLabel = isTop
+    ? `<span class="card-rank top">🏆 #${p.rank} Paper of the Day</span>`
+    : `<span class="card-rank">#${p.rank}</span>`;
+
+  const authorsStr = p.authors.slice(0, 4).join(', ') + (p.authors.length > 4 ? ` 외 ${p.authors.length - 4}명` : '');
+
+  const highlightItems = p.highlights.map(h =>
+    `<div class="highlight-item">${h}</div>`
+  ).join('');
+
+  const githubLink = p.githubUrl
+    ? `<a class="link-btn github" href="${p.githubUrl}" target="_blank">⚙ GitHub</a>`
+    : '';
+
+  const card = document.getElementById('card');
+  card.style.animation = 'none';
+  card.offsetHeight;
+  card.style.animation = '';
+
+  card.innerHTML = `
+    ${rankLabel}
+    <div class="card-title">${p.title}</div>
+    <div class="card-meta">
+      <span class="meta-chip">👤 ${authorsStr}</span>
+      <span class="meta-chip">🏛 ${p.org}</span>
+      <span class="meta-chip upvote">▲ ${p.upvotes} upvotes</span>
+    </div>
+    <div class="abstract-label">초록 (Abstract)</div>
+    <div class="abstract collapsed" id="abstractText">${p.abstract}</div>
+    <button class="expand-btn" id="expandBtn" onclick="toggleExpand()">더 보기 ▾</button>
+    <div class="highlights">${highlightItems}</div>
+    <div class="links-row">
+      <a class="link-btn hf" href="${p.hfUrl}" target="_blank">🤗 HuggingFace</a>
+      <a class="link-btn arxiv" href="${p.arxivUrl}" target="_blank">📄 arXiv</a>
+      ${githubLink}
+    </div>
+  `;
+
+  updateProgress();
+  updateNav();
+  updateDots();
+}
+
+function toggleExpand() {
+  expanded = !expanded;
+  const abstractEl = document.getElementById('abstractText');
+  const btnEl = document.getElementById('expandBtn');
+  if (expanded) {
+    abstractEl.classList.remove('collapsed');
+    btnEl.textContent = '접기 ▴';
+  } else {
+    abstractEl.classList.add('collapsed');
+    btnEl.textContent = '더 보기 ▾';
+  }
+}
+
+function navigate(dir) {
+  const next = current + dir;
+  if (next < 0 || next >= papers.length) return;
+  current = next;
+  renderCard();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function goTo(index) {
+  current = index;
+  renderCard();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function updateProgress() {
+  const pct = ((current + 1) / papers.length) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = `${current + 1} / ${papers.length}`;
+}
+
+function updateNav() {
+  document.getElementById('prevBtn').disabled = current === 0;
+  document.getElementById('nextBtn').disabled = current === papers.length - 1;
+}
+
+function updateDots() {
+  const container = document.getElementById('dots');
+  container.innerHTML = '';
+  papers.forEach((_, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'dot' + (i === current ? ' active' : '');
+    dot.onclick = () => goTo(i);
+    container.appendChild(dot);
+  });
+}
+
+renderCard();
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') navigate(1);
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   navigate(-1);
+});
+</script>
+</body>
+</html>
